@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stash</title>
+</head>
+<body>
+<script>
+  let onboarded = false;
+  try { onboarded = localStorage.getItem("stash_onboarded") === "1"; } catch(e){}
+  window.location.replace(onboarded ? "dashboard.html" : "welcome.html");
+</script>
+<noscript>
+  <meta http-equiv="refresh" content="0; url=welcome.html">
+</noscript>
+</body>
+</html>
