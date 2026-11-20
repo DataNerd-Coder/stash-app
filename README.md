@@ -1,159 +1,149 @@
-# Stash — Front-end Prototype
+# Stash
 
-A static, multi-page front end for Stash. Plain HTML/CSS/JS, no build step, no
-framework — open it in a browser or deploy it as-is to any static host.
+Mobile-first business assistant for small shops.
 
-## Structure
+- **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS v4
+- **Backend:** Vercel Functions (`api/`) + Neon Postgres via Drizzle ORM
+- **AI chat:** Groq (`openai/gpt-oss-120b`), answering from the live business data
 
-```
-stash-app/
-├── index.html            Entry point — routes to welcome.html or dashboard.html
-├── welcome.html            Onboarding intro (3 slides)
-├── signup.html              Business setup form
-├── dashboard.html            Home screen
-├── chat.html                  Redirect stub → dashboard.html?openChat=1
-├── camera.html                  Standalone snap-notebook demo flow
-│
-├── products.html          Products, with Expired / Expires-in-X-days badges + # lookups
-├── stockrecords.html      Stock Records (Product | Purchased | Sold | Remaining)
-├── sales.html               Sales log with period filters
-├── expenses.html              Expenses log
-├── debts.html                   Customer debts
-├── suppliers.html                 Suppliers + supplier-discovery insight
-├── invoices.html                    Invoices (Draft/Sent/Paid/Overdue)
-├── reports.html                       Analytical view
-├── barcode.html                         Generate/preview/print reusable barcodes
-├── bank.html                              Bank reconciliation (future-ready stub)
-│
-├── profile.html            Profile Details (business info + Security section)
-├── referrals.html           Referral link + stats
-├── privacy.html                Privacy policy (static)
-├── terms.html                    Terms of Service (static)
-│
-├── css/style.css        Shared design system
-├── js/mock-data.js       Mock business data
-├── js/app.js               Shared logic: chat sheet, calculator, voice notes,
-│                            # product search, progressive record completion,
-│                            drawer, sign-out, mock AI replies
-├── js/chat-widget.js        Injects the shared chatbox onto every business page
-└── assets/                    Logo files
-```
+Everything deploys as one Vercel project.
 
-## Key interactions implemented
+## Getting started
 
-- **Global pullable chatbox**: the chat bottom-sheet (`js/chat-widget.js`) is a
-  shared component mounted on every business page (Products, Stock Records,
-  Sales, Expenses, Debts, Suppliers, Invoices, Reports, Profile, Referrals,
-  Barcode, Bank — not the onboarding/legal pages), not just the dashboard.
-  Drag it up from any of those pages and the current page stays put underneath.
-- **Auto-scroll**: sending a message smoothly scrolls just the chat thread
-  (never the whole page) so the new message and Stash's reply are always
-  visible — fixed a real bug here where scroll was being set on the wrong
-  (non-scrolling) element.
-- **Voice notes**: tap the mic (shown only when the input is empty) for a real
-  `getUserMedia` recording with a live timer, animated waveform, and a clear
-  cancel. "Send" simulates transcription and feeds the result through the
-  same conversational pipeline as typed text — including extracting multiple
-  facts (a sale *and* an expense) from one note.
-- **`#` product search**: type `#` for live fuzzy-matched suggestions above
-  the input (works through misspellings like `#mlk` or `#miloo`). Picking a
-  suggestion resolves it immediately; sending `#query` as-is instead posts it
-  to the conversation verbatim and Stash searches inside the chat. Using
-  `#product` inline in a sentence resolves it directly when there's one clear
-  match, or asks you to choose when there are several — never guesses.
-  Product cards always show real recorded data only (`Not set` / `Not
-  available yet` rather than invented prices; real stock counts, never
-  estimated).
-- **`+` toolbox**: a single `+` button in the chat input reveals Camera,
-  Files, Barcode, Calculator, and "Go to page" (`@`).
-- **Calculator**: full operators, %, parentheses, history, backspace/AC/±.
-  "Use in Stash" sends the whole equation into the input.
-- **Barcode system**: generate a batch of blank reusable labels, preview,
-  real browser print. Scan feeds into chat where Stash asks what the item is.
-- **Progressive record completion**: `mockStashReply` never invents missing
-  data — asks one clarifying question when needed, and confirms immediately
-  without asking when enough context is already in the message (fixed a
-  fallthrough bug here where a fully-specified expense was being misread as a
-  generic query due to a stray keyword match).
-- **Bank reconciliation**: matched/needs-review/unmatched, nothing reconciles
-  without explicit user confirmation.
-- **Supplier discovery**: a "Stash Noticed" insight on Suppliers, built only
-  from real mock cost data.
-- **Homepage expiry alert**: a 4th row under Top Products only when products
-  are expired or expiring within 7 days.
-- **App menu**: hamburger (top right) opens a full page — not an overlay —
-  with a profile avatar top-right, chevrons on every row, generous row
-  spacing, and a subtitle on the Profile Details row.
-- **Chat history**: hamburger icon top-left of the *expanded chat*
-  (ChatGPT-style) opens a half-page slide-out with live search, separate from
-  app navigation.
-- **`@` page shortcuts**: type `@` for a lightweight page-navigation
-  autocomplete. Picking one only fills the input — navigation happens only on
-  Send.
-
-## Running it locally
+Requires Node 20.19+ (or 22.12+) and [pnpm](https://pnpm.io).
 
 ```bash
-npx serve .
+pnpm install
+cp .env.example .env.local      # then fill in DATABASE_URL (Neon) and GROQ_API_KEY (Groq)
+pnpm db:migrate                 # create the tables
+pnpm db:seed                    # load demo data (Chidi's Provisions)
+pnpm dev                        # http://localhost:5173 — frontend + API together
 ```
-or open `index.html` directly in a browser. Voice notes need microphone
-permission and a page served over `http://localhost` or `https://` — some
-browsers block `getUserMedia` on `file://` URLs.
 
-## Deploying it
+`pnpm dev` also serves the `api/` functions with hot reload (see `server/dev/vite-api.ts`), so you don't
+need the Vercel CLI. `pnpm preview` serves only the built frontend, without the API.
 
-Drag the whole `stash-app` folder onto [Netlify Drop](https://app.netlify.com/drop),
-or push it to a GitHub repo and enable GitHub Pages — no build step needed.
+| Command                | What it does                                                      |
+| ---------------------- | ----------------------------------------------------------------- |
+| `pnpm dev`             | Frontend + API with hot reload                                    |
+| `pnpm build`           | Type-check everything, then production build to `dist/`           |
+| `pnpm lint`            | ESLint                                                            |
+| `pnpm typecheck`       | TypeScript only                                                   |
+| `pnpm db:generate`     | After editing `server/db/schema.ts`: write a new SQL migration    |
+| `pnpm db:migrate`      | Apply pending migrations to `DATABASE_URL`                        |
+| `pnpm db:seed`         | Load demo data, only if the database is empty                     |
+| `pnpm db:seed --reset` | **Delete all business data** and reload fresh demo data           |
+| `pnpm db:studio`       | Browse the database in Drizzle Studio                             |
 
-## Wiring up real data
+The demo sales are generated for the last 30 days relative to when you seed. Run `pnpm db:seed --reset`
+to refresh "today".
 
-Everything reads from `STASH_MOCK` in `js/mock-data.js`. To connect a real backend:
+The app is designed for phones. On a desktop, use a narrow window or device mode (390px wide).
 
-1. Replace `STASH_MOCK` reads with `fetch()` calls on each page's load script.
-2. Replace `mockStashReply()` (in `js/app.js`) with a real AI/chat endpoint.
-3. Replace `VOICE_TRANSCRIPTS[0]` in `StashVoice.finish()` with a real
-   speech-to-text API call on the recorded `Blob` (currently captured by
-   `MediaRecorder` but discarded, since there's no STT backend to send it to
-   yet).
-4. `searchProducts()` / `fuzzyProductScore()` in `js/app.js` run entirely
-   client-side against `STASH_MOCK.products` — swap for a real search
-   endpoint, or keep the client-side fuzzy matching over a synced product
-   list; either works with the same UI.
-5. In `barcode.html`, replace `randomBarcodeId()` with real server-issued
-   identifiers.
-6. In `bank.html`, replace the mock transaction list with a real bank-linking
-   integration (e.g. Mono/Okra for Nigerian accounts).
-7. `StashSession` in `js/app.js` uses `localStorage` for onboarding/business
-   info — swap for real auth/session handling when you add a backend.
+## Deploying to Vercel
 
-## Notes
+1. Import the repo in Vercel. `vercel.json` already sets the pnpm install/build commands, the `dist`
+   output, the routing (pages go to the React app, `/api/*` goes to the functions) and asset caching.
+2. Under Project → Settings → Environment Variables, add **`DATABASE_URL`** (same Neon string as
+   `.env.local`, or connect Neon through Vercel's Storage tab) and **`GROQ_API_KEY`**.
+3. Deploy. Visit `/api/health` to check the API can reach the database (`{"ok":true}`).
 
-- **The app is a real responsive layout now, not a phone-mockup screenshot.**
-  Earlier builds wrapped every page in a fixed 400×844px "device" frame with a
-  fake status bar and rounded black bezel — that was only ever meant for
-  previewing inside this chat, but it was shipping to the real deployed site
-  too, which is exactly what broke the chatbox on an actual phone (a fake
-  phone nested inside the real one, clipped by a hardcoded height that didn't
-  match the real viewport). That's fixed: on real mobile viewports the app is
-  edge-to-edge with no fake bezel/status bar, the chat dock is genuinely
-  `position:fixed` to the real viewport, and the page itself scrolls
-  naturally. A max-width centered card only appears on wide desktop windows,
-  purely for convenient preview — never on an actual phone.
-- Two real bugs were caught and fixed while making this change: the compact
-  chat bar's resting position had an inverted `translateY` (pushing it further
-  off-screen instead of leaving it in place), and a CSS specificity tie meant
-  `.dragging{ transition:none }` was silently losing to `.expanded`'s own
-  transition rule, causing the drag gesture to visibly fight itself and
-  usually snap back to collapsed instead of expanding. Both were found by
-  measuring actual computed styles during a simulated drag, not by eyeballing
-  screenshots.
-- `js/chat-widget.js` is the single source of truth for the chat sheet's
-  markup — injected via `mountStashChat()` rather than duplicated across
-  files.
-- Currency formatting is hand-rolled in `formatNaira()` rather than relying on
-  `toLocaleString`, since `en-NG` locale data support varies across
-  environments.
-- Every interactive flow in this build was tested end-to-end with real
-  headless Chromium (Playwright) at real mobile viewport dimensions (390×844),
-  including microphone capture (via Chromium's fake-device flags) — not just
-  visually inspected.
+Migrations are **not** run automatically on deploy. After changing the schema, run `pnpm db:migrate`
+against the production database yourself.
+
+Old links from the static version (`/dashboard.html?openChat=1` etc.) still work and redirect to the new routes.
+
+## Login
+
+Phone number + password. Implemented in `server/auth.ts` using only `node:crypto`, so nothing beyond
+Vercel and Neon is needed:
+
+- Passwords are hashed with scrypt (random salt, constant-time compare).
+- Sessions are random tokens in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` on HTTPS), valid for 30 days.
+  The database stores only the token's sha256.
+- Signup creates a **new business** plus its owner. Every API query is scoped to the signed-in owner's
+  business, so shops can't see each other's data.
+- Demo login (after `pnpm db:seed`): **0803 123 4567 / stash-demo**.
+
+Not done yet: password reset (needs SMS or email), and rate-limiting login attempts.
+
+## Project structure
+
+```
+api/                         Vercel Functions — one file per endpoint (thin wrappers)
+server/
+├── db/schema.ts             Database tables (Drizzle) — money stored as integer kobo
+├── db/client.ts             Neon HTTP driver connection
+├── services/                The queries: dashboard, products, records, reports, bank, profile
+├── business.ts              Which business is "current" (placeholder until auth)
+├── http.ts                  route() wrapper, JSON errors
+├── time.ts                  Africa/Lagos "today" / period filters
+└── dev/vite-api.ts          Serves api/ during `pnpm dev`
+drizzle/                     Generated SQL migrations (commit these)
+scripts/                     migrate.ts, seed.ts
+src/
+├── App.tsx / main.tsx       Routes; React Query setup
+├── data/types.ts            Types shared by API and frontend
+├── data/mock.ts             What's still mock: chat history, photo-reading demo, referrals
+├── hooks/queries.ts         React Query hooks — one per endpoint
+├── lib/                     api client, dates, formatting, chat "brain", product search
+├── components/              ui/ primitives, chat/ (pullable chatbox), layout/
+└── pages/                   One file per screen
+```
+
+### API
+
+| Endpoint | Returns |
+| -------- | ------- |
+| `GET /api/dashboard` | Today's sales (vs. this time yesterday), 7-day bars, top products, low stock, expiry count, insight |
+| `GET /api/products` · `?view=low` | Products with expiry and average selling price · low-stock list |
+| `GET /api/stock-records?period=` | Purchased/sold in period, current stock |
+| `GET /api/sales?period=` · `/api/expenses?period=` | Records (`today`, `7d`, `month`, `all`) |
+| `GET /api/debts` · `/api/suppliers` · `/api/invoices` | Lists (suppliers include cheaper offers) |
+| `GET /api/reports` | 30-day revenue, profit, margin, expenses, best sellers |
+| `GET /api/bank` · `POST /api/bank {transactionId}` | Account + transactions · confirm a reconciliation |
+| `GET /api/business` · `PUT /api/business` | Owner/business details (signup writes here) |
+| `POST /api/auth/signup` · `login` · `logout` · `GET /api/auth/me` | Accounts and sessions (see Login) |
+| `POST /api/chat {messages}` | AI reply (Groq), grounded in fresh business data. Can record sales/expenses/restocks |
+| `POST /api/transcribe` (multipart `audio`) | Voice note → text via Groq Whisper |
+| `GET /api/health` | Database connectivity check |
+
+## What's real and what's still mock
+
+**Real (Neon):** every list and number on the business pages, the dashboard, reports, the `#` product
+search in chat, signup details and bank reconciliation.
+
+**Real (Groq AI):** free-text chat, recording, and voice notes. `api/chat.ts` rebuilds a compact snapshot of the business
+(`server/ai/context.ts`, ~1,200 tokens) on every message and sends it with the last 12 messages to
+Groq (`server/ai/groq.ts`, same approach as gitcap: plain fetch, model fallback, friendly errors).
+The rules for tone and honesty live in `server/ai/prompt.ts`. It replies in Pidgin when asked in
+Pidgin, and says "I don't have that" rather than inventing numbers. `#` lookups and `@` navigation
+stay instant and local.
+
+**Recording from chat:** when the owner reports a sale, expense or restock, the model calls a tool
+(`server/ai/tools.ts`). The tool matches the product (suggesting "Did you mean…?" for misspelt or
+misheard names), validates the numbers, and writes atomically. Sales reduce stock and snapshot the
+cost price. Each saved item shows a "✓ Saved" line in the chat, and all screens refresh.
+
+**Voice notes:** recorded in the browser (up to 2 minutes), transcribed by Groq Whisper
+(`whisper-large-v3-turbo`, hinted with the shop's product names), then handled like typed text,
+so a spoken sale gets recorded too.
+
+Groq's free tier allows **8,000 tokens per minute** (roughly 4–5 chat messages a minute) and 1,000
+requests a day. Past that, the chat shows a "give me a minute" message. A paid Groq plan raises the
+limits. Change the model with `GROQ_MODEL`.
+
+**Still mock:**
+- **Chat history:** in `src/data/mock.ts`; not stored.
+- **Notebook photos:** always "reads" the same sample products (needs an image-reading API).
+- **Barcodes:** IDs are random (`src/pages/Barcode.tsx`).
+- **Bank linking:** the account is seeded; real linking needs Mono/Okra.
+- **Referrals:** static.
+- **Recording debts, payments, invoices or new products from chat:** not yet. The AI says so.
+
+## Styling
+
+Design tokens live in `src/index.css` under `@theme`. They become Tailwind utilities (`bg-primary`,
+`text-muted-2`, `shadow-card`, `rounded-card`, `font-display`, `desk:` breakpoint). The chat sheet's
+drag states are plain CSS classes toggled by `sheet-controller.ts`. Children react to them with
+`group-[.expanded]:` utilities.
