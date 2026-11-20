@@ -74,9 +74,3 @@ export const pageShortcuts: PageShortcut[] = [
   { tag: "invoices", label: "Invoices", path: "/invoices" },
   { tag: "reports", label: "Reports", path: "/reports" },
 ];
-
-// Voice notes: recorded audio is captured but there's no speech-to-text backend yet,
-// so this canned transcript stands in for the real result.
-export const voiceTranscripts: string[] = [
-  "I sold twelve cartons of Indomie today for one hundred and twenty thousand naira and spent five thousand on transport.",
-];

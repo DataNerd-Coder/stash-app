@@ -53,12 +53,19 @@ against the production database yourself.
 
 Old links from the static version (`/dashboard.html?openChat=1` etc.) still work and redirect to the new routes.
 
-## ⚠️ Before real users: no login yet
+## Login
 
-There is no authentication. The API serves the **first business in the database**
-(`server/business.ts`), and anyone with the URL can read the data, use the two write endpoints
-(signup details, bank reconcile), and spend your Groq quota through `/api/chat`. That's fine for a demo. Add auth before real business data goes in.
-Every query already filters by `business_id`, so only `getCurrentBusiness()` needs to change.
+Phone number + password. Implemented in `server/auth.ts` using only `node:crypto`, so nothing beyond
+Vercel and Neon is needed:
+
+- Passwords are hashed with scrypt (random salt, constant-time compare).
+- Sessions are random tokens in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` on HTTPS), valid for 30 days.
+  The database stores only the token's sha256.
+- Signup creates a **new business** plus its owner. Every API query is scoped to the signed-in owner's
+  business, so shops can't see each other's data.
+- Demo login (after `pnpm db:seed`): **0803 123 4567 / stash-demo**.
+
+Not done yet: password reset (needs SMS or email), and rate-limiting login attempts.
 
 ## Project structure
 
@@ -96,7 +103,9 @@ src/
 | `GET /api/reports` | 30-day revenue, profit, margin, expenses, best sellers |
 | `GET /api/bank` · `POST /api/bank {transactionId}` | Account + transactions · confirm a reconciliation |
 | `GET /api/business` · `PUT /api/business` | Owner/business details (signup writes here) |
-| `POST /api/chat {messages}` | AI reply (Groq), grounded in a fresh snapshot of the business data |
+| `POST /api/auth/signup` · `login` · `logout` · `GET /api/auth/me` | Accounts and sessions (see Login) |
+| `POST /api/chat {messages}` | AI reply (Groq), grounded in fresh business data. Can record sales/expenses/restocks |
+| `POST /api/transcribe` (multipart `audio`) | Voice note → text via Groq Whisper |
 | `GET /api/health` | Database connectivity check |
 
 ## What's real and what's still mock
@@ -104,28 +113,33 @@ src/
 **Real (Neon):** every list and number on the business pages, the dashboard, reports, the `#` product
 search in chat, signup details and bank reconciliation.
 
-**Real (Groq AI):** free-text chat. `api/chat.ts` rebuilds a compact snapshot of the business
+**Real (Groq AI):** free-text chat, recording, and voice notes. `api/chat.ts` rebuilds a compact snapshot of the business
 (`server/ai/context.ts`, ~1,200 tokens) on every message and sends it with the last 12 messages to
 Groq (`server/ai/groq.ts`, same approach as gitcap: plain fetch, model fallback, friendly errors).
 The rules for tone and honesty live in `server/ai/prompt.ts`. It replies in Pidgin when asked in
 Pidgin, and says "I don't have that" rather than inventing numbers. `#` lookups and `@` navigation
 stay instant and local.
 
+**Recording from chat:** when the owner reports a sale, expense or restock, the model calls a tool
+(`server/ai/tools.ts`). The tool matches the product (suggesting "Did you mean…?" for misspelt or
+misheard names), validates the numbers, and writes atomically. Sales reduce stock and snapshot the
+cost price. Each saved item shows a "✓ Saved" line in the chat, and all screens refresh.
+
+**Voice notes:** recorded in the browser (up to 2 minutes), transcribed by Groq Whisper
+(`whisper-large-v3-turbo`, hinted with the shop's product names), then handled like typed text,
+so a spoken sale gets recorded too.
+
 Groq's free tier allows **8,000 tokens per minute** (roughly 4–5 chat messages a minute) and 1,000
 requests a day. Past that, the chat shows a "give me a minute" message. A paid Groq plan raises the
 limits. Change the model with `GROQ_MODEL`.
 
 **Still mock:**
-- **Recording from chat:** the AI understands "I sold…" / "I spent…" and says plainly that it was
-  **not saved**. Next step: give the model tools (create sale/expense) backed by POST endpoints.
 - **Chat history:** in `src/data/mock.ts`; not stored.
-- **Voice notes:** audio is recorded but the transcript is canned. The Groq account also offers
-  `whisper-large-v3`, which could transcribe the recording for real.
 - **Notebook photos:** always "reads" the same sample products (needs an image-reading API).
 - **Barcodes:** IDs are random (`src/pages/Barcode.tsx`).
 - **Bank linking:** the account is seeded; real linking needs Mono/Okra.
 - **Referrals:** static.
-- **Login:** see the warning above.
+- **Recording debts, payments, invoices or new products from chat:** not yet. The AI says so.
 
 ## Styling
 

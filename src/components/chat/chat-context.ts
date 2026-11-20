@@ -23,7 +23,7 @@ export interface ChatContextValue {
   pickProductSuggestion(product: Product): void;
   showProduct(product: Product): void;
   attachFile(file: File, fromCamera: boolean): void;
-  submitVoiceNote(): void;
+  submitVoiceNote(audio: Blob): void;
   voiceUnavailable(): void;
   loadConversation(convo: Conversation): void;
   startNewChat(): void;

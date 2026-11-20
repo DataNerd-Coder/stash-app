@@ -243,3 +243,7 @@ export interface Me {
   name: string;
   phone: string;
 }
+
+export interface TranscribeResponse {
+  text: string;
+}

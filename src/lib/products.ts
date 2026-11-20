@@ -1,4 +1,4 @@
-import type { Product } from "@/data/types";
+import type { Product } from "../data/types.js";
 
 /* ---------- # product search (client-side fuzzy matching over the real product list) ---------- */
 

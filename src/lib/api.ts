@@ -13,7 +13,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     res = await fetch(`/api/${path}`, {
       ...init,
-      headers: { Accept: "application/json", ...(init?.body ? { "Content-Type": "application/json" } : {}), ...init?.headers },
+      headers: {
+        Accept: "application/json",
+        ...(typeof init?.body === "string" ? { "Content-Type": "application/json" } : {}),
+        ...init?.headers,
+      },
     });
   } catch {
     throw new ApiError(0, "Can't reach Stash right now. Check your connection and try again.");
@@ -27,4 +31,6 @@ export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, data: unknown) => request<T>(path, { method: "POST", body: JSON.stringify(data) }),
   put: <T>(path: string, data: unknown) => request<T>(path, { method: "PUT", body: JSON.stringify(data) }),
+  /** multipart upload (the browser sets the Content-Type boundary itself) */
+  upload: <T>(path: string, form: FormData) => request<T>(path, { method: "POST", body: form }),
 };

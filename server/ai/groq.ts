@@ -56,11 +56,17 @@ function apiKey(): string {
 
 async function request<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
   let res: Response;
+  const isForm = body instanceof FormData;
   try {
     res = await fetch(`${API_BASE}${path}`, {
       method,
-      headers: { Authorization: `Bearer ${apiKey()}`, "Content-Type": "application/json", "User-Agent": "stash-app" },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: {
+        Authorization: `Bearer ${apiKey()}`,
+        "User-Agent": "stash-app",
+        // FormData sets its own multipart boundary header
+        ...(isForm ? {} : { "Content-Type": "application/json" }),
+      },
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (err) {
@@ -146,4 +152,21 @@ export async function chatCompletion(
     console.warn(`Groq model ${DEFAULT_MODEL} unavailable, using ${replacement}`);
     return complete(messages, replacement, maxTokens, tools);
   }
+}
+
+export const TRANSCRIBE_MODEL = process.env.GROQ_TRANSCRIBE_MODEL || "whisper-large-v3-turbo";
+
+/**
+ * Speech-to-text with Groq Whisper. `prompt` biases spelling toward words the
+ * owner is likely to say (product names, "naira").
+ */
+export async function transcribe(audio: Blob, filename: string, prompt?: string): Promise<string> {
+  const form = new FormData();
+  form.append("file", audio, filename);
+  form.append("model", TRANSCRIBE_MODEL);
+  form.append("response_format", "json");
+  form.append("temperature", "0");
+  if (prompt) form.append("prompt", prompt.slice(0, 600));
+  const data = await request<{ text?: string }>("POST", "/audio/transcriptions", form);
+  return (data.text ?? "").trim();
 }

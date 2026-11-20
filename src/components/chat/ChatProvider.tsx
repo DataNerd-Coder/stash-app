@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
-import { chatHistory, detectionSample, pageShortcuts, voiceTranscripts } from "@/data/mock";
-import type { ChatResponse, ChatTurn, Conversation, Product } from "@/data/types";
+import { chatHistory, detectionSample, pageShortcuts } from "@/data/mock";
+import type { ChatResponse, ChatTurn, Conversation, Product, TranscribeResponse } from "@/data/types";
 import { useProducts } from "@/hooks/queries";
 import { useProfile } from "@/hooks/useProfile";
 import { api } from "@/lib/api";
@@ -207,18 +207,31 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [expand, push, pushText, remove],
   );
 
-  // Voice note was recorded: the audio isn't transcribed yet, so a canned
-  // transcript goes to the AI exactly like typed text would.
-  const submitVoiceNote = useCallback(() => {
-    expand();
-    const transcribingId = pushText("stash", "Transcribing your voice note…");
-    window.setTimeout(() => {
-      remove(transcribingId);
-      const transcript = voiceTranscripts[0];
-      pushText("user", transcript);
-      void askStash(transcript);
-    }, 1100);
-  }, [askStash, expand, pushText, remove]);
+  // Voice note: transcribed by Groq Whisper, then handled exactly like typed text
+  // (so "I sold 3 cartons of Indomie for 40,500" gets recorded too).
+  const submitVoiceNote = useCallback(
+    async (audio: Blob) => {
+      expand();
+      const transcribingId = pushText("stash", "Transcribing your voice note…");
+      const ext = audio.type.includes("mp4") ? "mp4" : audio.type.includes("ogg") ? "ogg" : "webm";
+      const form = new FormData();
+      form.append("audio", audio, `voice-note.${ext}`);
+      try {
+        const { text } = await api.upload<TranscribeResponse>("transcribe", form);
+        remove(transcribingId);
+        if (!text) {
+          pushText("stash", "I couldn't hear anything in that voice note. Try again a bit closer to the phone.");
+          return;
+        }
+        pushText("user", text);
+        await askStash(text);
+      } catch (err) {
+        remove(transcribingId);
+        pushText("stash", err instanceof Error ? err.message : "I couldn't transcribe that voice note. Please try again.");
+      }
+    },
+    [askStash, expand, pushText, remove],
+  );
 
   const voiceUnavailable = useCallback(() => {
     expand();
@@ -255,7 +268,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       pickProductSuggestion,
       showProduct,
       attachFile: (file, fromCamera) => void attachFile(file, fromCamera),
-      submitVoiceNote,
+      submitVoiceNote: (audio) => void submitVoiceNote(audio),
       voiceUnavailable,
       loadConversation,
       startNewChat,

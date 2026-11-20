@@ -3,6 +3,7 @@
 // transaction on Neon) and returns a short plain-text result for the model.
 import { and, eq, ilike, sql } from "drizzle-orm";
 import { formatNaira } from "../../src/lib/format.js";
+import { fuzzyProductScore } from "../../src/lib/products.js";
 import type { CurrentBusiness } from "../business.js";
 import { getDb, schema } from "../db/client.js";
 import { toKobo } from "../money.js";
@@ -102,6 +103,16 @@ async function findProduct(biz: CurrentBusiness, name: string) {
   if (candidates.length === 1) return candidates[0];
   if (candidates.length > 1) {
     throw new ToolInputError(`"${name}" matches several products: ${candidates.map((c) => c.name).join(", ")}. Ask the owner which one.`);
+  }
+  // misspelt or misheard (e.g. a voice note heard "Nidomi"): suggest, never auto-pick for a write
+  const all = await db.select({ name: products.name }).from(products).where(eq(products.businessId, biz.id));
+  const close = all
+    .map((p) => ({ name: p.name, score: fuzzyProductScore(name, p.name) }))
+    .filter((p) => p.score > 300)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+  if (close.length) {
+    throw new ToolInputError(`No product is called "${name}". Closest: ${close.map((c) => c.name).join(", ")}. Ask the owner "Did you mean ${close[0].name}?" and record it once they confirm.`);
   }
   throw new ToolInputError(`There's no product called "${name}" in this shop's product list. Ask the owner to check the name; new products can't be added from chat yet.`);
 }

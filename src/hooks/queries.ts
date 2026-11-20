@@ -79,8 +79,8 @@ export function useUpdateBusiness() {
 
 export const meKey = ["me"] as const;
 
-/** The signed-in user; errors with 401 when logged out (no retries). */
-export const useMe = () => useQuery({ queryKey: meKey, queryFn: () => api.get<Me>("auth/me"), retry: false, staleTime: 5 * 60_000 });
+/** The signed-in user, or null when logged out. */
+export const useMe = () => useQuery({ queryKey: meKey, queryFn: () => api.get<Me | null>("auth/me"), staleTime: 5 * 60_000 });
 
 function useAuthMutation<T>(path: string) {
   const qc = useQueryClient();
@@ -89,7 +89,7 @@ function useAuthMutation<T>(path: string) {
     // a different user may now be signed in: drop every cached record
     onSuccess: async () => {
       qc.removeQueries();
-      await qc.fetchQuery({ queryKey: meKey, queryFn: () => api.get<Me>("auth/me") });
+      await qc.fetchQuery({ queryKey: meKey, queryFn: () => api.get<Me | null>("auth/me") });
     },
   });
 }
@@ -101,6 +101,9 @@ export function useLogout() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => api.post<{ ok: true }>("auth/logout", {}),
-    onSettled: () => qc.removeQueries(),
+    onSettled: () => {
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
+      qc.setQueryData(meKey, null);
+    },
   });
 }
