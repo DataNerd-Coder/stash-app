@@ -12,13 +12,26 @@ const TIMEOUT_MS = 25_000;
 // Only wait out a 429 inline if Groq says it clears quickly; otherwise tell the user.
 const MAX_INLINE_RETRY_SECONDS = 3;
 
-export interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
+export interface ToolCall {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
+export type ChatMessage =
+  | { role: "system" | "user"; content: string }
+  | { role: "assistant"; content: string | null; tool_calls?: ToolCall[] }
+  | { role: "tool"; tool_call_id: string; content: string };
+
+/** OpenAI-style function tool definition. */
+export interface ToolDefinition {
+  type: "function";
+  function: { name: string; description: string; parameters: Record<string, unknown> };
 }
 
 export interface Completion {
   text: string;
+  toolCalls: ToolCall[];
   model: string;
   usage: { promptTokens: number; completionTokens: number };
 }
@@ -80,13 +93,17 @@ async function availableModels(): Promise<Set<string>> {
   return new Set((data.data ?? []).filter((m) => m.active !== false).map((m) => m.id));
 }
 
-async function complete(messages: ChatMessage[], model: string, maxTokens: number): Promise<Completion> {
+async function complete(messages: ChatMessage[], model: string, maxTokens: number, tools?: ToolDefinition[]): Promise<Completion> {
   const body: Record<string, unknown> = {
     model,
     messages,
     temperature: 0.3,
     max_completion_tokens: maxTokens,
   };
+  if (tools?.length) {
+    body.tools = tools;
+    body.tool_choice = "auto";
+  }
   if (model.startsWith("openai/gpt-oss")) {
     // keep answers quick and the token budget for the reply itself
     body.reasoning_effort = "low";
@@ -95,7 +112,7 @@ async function complete(messages: ChatMessage[], model: string, maxTokens: numbe
 
   type Response = {
     model?: string;
-    choices?: { message?: { content?: string } }[];
+    choices?: { message?: { content?: string | null; tool_calls?: ToolCall[] } }[];
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
   let data: Response;
@@ -108,21 +125,25 @@ async function complete(messages: ChatMessage[], model: string, maxTokens: numbe
   }
   return {
     text: (data.choices?.[0]?.message?.content ?? "").trim(),
+    toolCalls: data.choices?.[0]?.message?.tool_calls ?? [],
     model: data.model ?? model,
     usage: { promptTokens: data.usage?.prompt_tokens ?? 0, completionTokens: data.usage?.completion_tokens ?? 0 },
   };
 }
 
 /** Chat completion, falling back to a live model if the configured one was retired. */
-export async function chatCompletion(messages: ChatMessage[], { maxTokens = 500 } = {}): Promise<Completion> {
+export async function chatCompletion(
+  messages: ChatMessage[],
+  { maxTokens = 500, tools }: { maxTokens?: number; tools?: ToolDefinition[] } = {},
+): Promise<Completion> {
   try {
-    return await complete(messages, DEFAULT_MODEL, maxTokens);
+    return await complete(messages, DEFAULT_MODEL, maxTokens, tools);
   } catch (err) {
     if (!(err instanceof ModelUnavailable)) throw err;
     const live = await availableModels();
     const replacement = FALLBACK_MODELS.find((m) => live.has(m) && m !== DEFAULT_MODEL);
     if (!replacement) throw new HttpError(502, "My AI model is unavailable right now.");
     console.warn(`Groq model ${DEFAULT_MODEL} unavailable, using ${replacement}`);
-    return complete(messages, replacement, maxTokens);
+    return complete(messages, replacement, maxTokens, tools);
   }
 }

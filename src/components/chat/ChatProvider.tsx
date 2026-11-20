@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { chatHistory, detectionSample, pageShortcuts, voiceTranscripts } from "@/data/mock";
 import type { ChatResponse, ChatTurn, Conversation, Product } from "@/data/types";
@@ -26,7 +27,7 @@ function toTurns(messages: ChatMessage[]): ChatTurn[] {
     const role = m.from === "user" ? "user" : "assistant";
     const b = m.body;
     let content: string | null = null;
-    if (b.kind === "text") content = b.text;
+    if (b.kind === "text") content = m.recorded?.length ? `${b.text}\n[Recorded: ${m.recorded.join("; ")}]` : b.text;
     else if (b.kind === "product") content = `[Showed product details: ${b.product.name}, ${stockLine(b.product)} in stock]`;
     else if (b.kind === "chooser") content = `[Listed products matching "${b.query}": ${b.products.map((p) => p.name).join(", ")}]`;
     else if (b.kind === "detected") {
@@ -52,6 +53,7 @@ const readAsDataURL = (file: File) =>
  */
 export function ChatProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { firstName } = useProfile();
   // # search runs over the real product list
   const { data: products = [] } = useProducts();
@@ -85,15 +87,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       const history = toTurns(messagesRef.current);
       const typingId = push("stash", { kind: "typing" });
       try {
-        const { reply } = await api.post<ChatResponse>("chat", { messages: [...history, { role: "user", content: text }] });
+        const res = await api.post<ChatResponse>("chat", { messages: [...history, { role: "user", content: text }] });
         remove(typingId);
-        pushText("stash", reply);
+        setMessages((prev) => [...prev, { id: newId(), from: "stash", body: { kind: "text", text: res.reply }, recorded: res.recorded }]);
+        // something was saved: refresh every screen that shows records
+        if (res.changed.length) void queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "me" });
       } catch (err) {
         remove(typingId);
         pushText("stash", err instanceof Error ? err.message : "Something went wrong. Please try again.");
       }
     },
-    [push, pushText, remove],
+    [push, pushText, remove, queryClient],
   );
 
   const send = useCallback(

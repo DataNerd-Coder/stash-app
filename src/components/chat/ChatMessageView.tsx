@@ -27,6 +27,12 @@ export function ChatMessageView({ message, onChooseProduct }: { message: ChatMes
       <div className={message.image ? "mt-2" : undefined}>
         <MessageContent body={message.body} onChooseProduct={onChooseProduct} />
       </div>
+      {message.recorded?.map((r) => (
+        <div key={r} className="mt-2 flex items-start gap-1.5 border-t border-border pt-2 text-[12px] font-semibold text-primary">
+          <span aria-hidden="true">✓</span>
+          <span>Saved · {r}</span>
+        </div>
+      ))}
     </div>
   );
 

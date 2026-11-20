@@ -14,6 +14,8 @@ export interface ChatMessage {
   body: MessageBody;
   /** data URL of an attached image */
   image?: string;
+  /** records the AI saved while producing this message */
+  recorded?: string[];
 }
 
 export interface SheetHandle {

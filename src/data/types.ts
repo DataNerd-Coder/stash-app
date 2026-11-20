@@ -219,6 +219,10 @@ export interface ChatRequest {
 
 export interface ChatResponse {
   reply: string;
+  /** what the AI saved to the database this turn, e.g. "Sale: 3 cartons of Indomie for ₦40,500" */
+  recorded: string[];
+  /** which kinds of records changed, so the app can refresh */
+  changed: ("sales" | "expenses" | "products")[];
 }
 
 // ---- Auth ----
