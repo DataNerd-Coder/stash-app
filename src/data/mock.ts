@@ -1,0 +1,82 @@
+// STASH — data that is still mock (not in the database yet): chat history,
+// chat helpers, the notebook-photo reading demo and referral stats.
+// Everything else is served by the API from Neon — see server/ and api/.
+import type { Conversation, DetectedItem, PageShortcut } from "./types";
+
+// Referral programme (no backend yet)
+export const referrals = {
+  link: "stash.app/r/chidi-provisions",
+  successful: "6",
+  earned: "\u20A69,000",
+  pending: "\u20A61,500",
+};
+
+// Mock "detected products" response when a notebook photo is snapped/attached
+export const detectionSample: DetectedItem[] = [
+  { name: "Indomie (1 carton)", qty: 10, unitPrice: 1200 },
+  { name: "Coca-Cola (50cl)", qty: 6, unitPrice: 800 },
+  { name: "Peak Milk (400g)", qty: 4, unitPrice: 900 },
+];
+
+export const chatHistory: Conversation[] = [
+  {
+    id: "c1",
+    title: "Today's sales",
+    date: "Aug 27",
+    messages: [
+      { from: "stash", text: "Good afternoon, Michael. I'm all caught up on today's sales — what would you like to know?" },
+    ],
+  },
+  {
+    id: "c2",
+    title: "New stock",
+    date: "Aug 26",
+    messages: [
+      { from: "user", text: "I bought 20 cartons of Indomie today" },
+      { from: "stash", text: "Got it — added 20 cartons of Indomie to your stock. Your total is now 37 cartons." },
+    ],
+  },
+  {
+    id: "c3",
+    title: "Expenses",
+    date: "Aug 25",
+    messages: [
+      { from: "user", text: "Spent 5000 on electricity today" },
+      { from: "stash", text: "Noted — ₦5,000 logged under Utilities for today." },
+    ],
+  },
+  {
+    id: "c4",
+    title: "Inventory check",
+    date: "Aug 24",
+    messages: [
+      { from: "user", text: "How much Coca-Cola do I have left?" },
+      { from: "stash", text: "You have 9 crates of Coca-Cola (50cl) left." },
+    ],
+  },
+];
+
+export const suggestions: string[] = [
+  "How much did I make today?",
+  "What's my top product?",
+  "What should I restock?",
+  "How much profit this month?",
+];
+
+// @ page shortcuts for chat input
+export const pageShortcuts: PageShortcut[] = [
+  { tag: "products", label: "Products", path: "/products" },
+  { tag: "stockrecords", label: "Stock Records", path: "/stockrecords" },
+  { tag: "sales", label: "Sales", path: "/sales" },
+  { tag: "expenses", label: "Expenses", path: "/expenses" },
+  { tag: "debts", label: "Debts", path: "/debts" },
+  { tag: "suppliers", label: "Suppliers", path: "/suppliers" },
+  { tag: "invoices", label: "Invoices", path: "/invoices" },
+  { tag: "reports", label: "Reports", path: "/reports" },
+];
+
+// Voice notes: recorded audio is captured but there's no speech-to-text backend yet,
+// so this canned transcript stands in for the real result.
+export const voiceTranscripts: string[] = [
+  "I sold twelve cartons of Indomie today for one hundred and twenty thousand naira and spent five thousand on transport.",
+];
