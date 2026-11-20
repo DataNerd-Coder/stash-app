@@ -184,3 +184,34 @@ export const bankTransactions = pgTable(
   },
   (t) => [index("bank_transactions_account_occurred_idx").on(t.accountId, t.occurredAt)],
 );
+
+// ---- Auth ----
+
+export const users = pgTable(
+  "users",
+  {
+    id: id(),
+    businessId: businessId(),
+    name: text("name").notNull(),
+    /** normalised Nigerian format, e.g. 08031234567 */
+    phone: text("phone").notNull(),
+    /** scrypt: "scrypt$<salt hex>$<hash hex>" */
+    passwordHash: text("password_hash").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("users_phone_idx").on(t.phone)],
+);
+
+export const sessions = pgTable(
+  "sessions",
+  {
+    /** sha256 of the session token — the raw token only ever lives in the cookie */
+    id: text("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("sessions_user_idx").on(t.userId)],
+);

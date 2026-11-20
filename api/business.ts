@@ -4,7 +4,7 @@ import { readJson, route } from "../server/http.js";
 import { getProfile, updateProfile } from "../server/services/profile.js";
 
 /** GET /api/business — business & owner details */
-export const GET = route(async () => getProfile(await getCurrentBusiness()));
+export const GET = route(async (request) => getProfile(await getCurrentBusiness(request)));
 
 /** PUT /api/business { ownerName, businessName, phone } — signup / edit details */
-export const PUT = route(async (request) => updateProfile(await getCurrentBusiness(), await readJson<Partial<BusinessUpdate>>(request)));
+export const PUT = route(async (request) => updateProfile(await getCurrentBusiness(request), await readJson<Partial<BusinessUpdate>>(request)));

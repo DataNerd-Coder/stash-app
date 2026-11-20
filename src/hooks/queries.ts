@@ -10,12 +10,15 @@ import type {
   Debt,
   Expense,
   Invoice,
+  LoginRequest,
   LowStockItem,
+  Me,
   Period,
   Product,
   Reports,
   Sale,
   StockRecord,
+  SignupRequest,
   SuppliersResponse,
 } from "@/data/types";
 
@@ -69,5 +72,35 @@ export function useUpdateBusiness() {
   return useMutation({
     mutationFn: (update: BusinessUpdate) => api.put<Business>("business", update),
     onSuccess: (data) => qc.setQueryData(queryKeys.business, data),
+  });
+}
+
+// ---- Auth ----
+
+export const meKey = ["me"] as const;
+
+/** The signed-in user; errors with 401 when logged out (no retries). */
+export const useMe = () => useQuery({ queryKey: meKey, queryFn: () => api.get<Me>("auth/me"), retry: false, staleTime: 5 * 60_000 });
+
+function useAuthMutation<T>(path: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: T) => api.post<{ ok: true }>(path, body),
+    // a different user may now be signed in: drop every cached record
+    onSuccess: async () => {
+      qc.removeQueries();
+      await qc.fetchQuery({ queryKey: meKey, queryFn: () => api.get<Me>("auth/me") });
+    },
+  });
+}
+
+export const useLogin = () => useAuthMutation<LoginRequest>("auth/login");
+export const useSignup = () => useAuthMutation<SignupRequest>("auth/signup");
+
+export function useLogout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.post<{ ok: true }>("auth/logout", {}),
+    onSettled: () => qc.removeQueries(),
   });
 }

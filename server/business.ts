@@ -1,6 +1,4 @@
-import { asc } from "drizzle-orm";
-import { getDb, schema } from "./db/client.js";
-import { HttpError } from "./http.js";
+import { requireUser } from "./auth.js";
 
 export interface CurrentBusiness {
   id: string;
@@ -8,19 +6,10 @@ export interface CurrentBusiness {
 }
 
 /**
- * The business whose data the API serves.
- *
- * TEMPORARY: there's no login yet, so this is simply the first business in the
- * database. Once auth is added, resolve it from the signed-in user's session
- * instead — every query already filters by business_id, so nothing else changes.
+ * The signed-in user's business. Every query filters by this id, so one
+ * owner can never see another business's records. Throws 401 when logged out.
  */
-export async function getCurrentBusiness(): Promise<CurrentBusiness> {
-  const db = getDb();
-  const [row] = await db
-    .select({ id: schema.businesses.id, timezone: schema.businesses.timezone })
-    .from(schema.businesses)
-    .orderBy(asc(schema.businesses.createdAt))
-    .limit(1);
-  if (!row) throw new HttpError(503, "No business set up yet. Run `pnpm db:seed` to load demo data.");
-  return row;
+export async function getCurrentBusiness(request: Request): Promise<CurrentBusiness> {
+  const user = await requireUser(request);
+  return { id: user.businessId, timezone: user.timezone };
 }

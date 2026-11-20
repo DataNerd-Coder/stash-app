@@ -1,5 +1,6 @@
 import type { ChatRequest, ChatResponse } from "../src/data/types.js";
 import { buildBusinessContext } from "../server/ai/context.js";
+import { getCurrentBusiness } from "../server/business.js";
 import { chatCompletion, type ChatMessage } from "../server/ai/groq.js";
 import { systemPrompt } from "../server/ai/prompt.js";
 import { HttpError, readJson, route } from "../server/http.js";
@@ -29,7 +30,7 @@ function validate(body: Partial<ChatRequest>): ChatMessage[] {
  */
 export const POST = route(async (request): Promise<ChatResponse> => {
   const messages = validate(await readJson<Partial<ChatRequest>>(request));
-  const context = await buildBusinessContext();
+  const context = await buildBusinessContext(await getCurrentBusiness(request));
   const completion = await chatCompletion([{ role: "system", content: systemPrompt(context) }, ...messages]);
   const reply = completion.text || "Sorry, I didn't catch that. Could you ask again?";
   return { reply };

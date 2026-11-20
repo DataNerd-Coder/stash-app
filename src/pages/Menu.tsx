@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Chevron, GroupedCard, ListItem, RowBody, RowIcon } from "@/components/ui/list";
 import { ModalCard, ModalOverlay } from "@/components/ui/modal";
 import { GroupLabel, PageContent, PageHeader } from "@/components/ui/page";
+import { useLogout } from "@/hooks/queries";
 import { useProfile } from "@/hooks/useProfile";
-import { session } from "@/lib/session";
 
 const businessLinks = [
   { to: "/products", label: "Products" },
@@ -42,11 +42,14 @@ export default function MenuPage() {
   const profile = useProfile();
   const [signOutOpen, setSignOutOpen] = useState(false);
 
-  const confirmSignOut = () => {
-    session.clear();
-    chat.reset();
-    navigate("/welcome");
-  };
+  const logout = useLogout();
+  const confirmSignOut = () =>
+    logout.mutate(undefined, {
+      onSettled: () => {
+        chat.reset();
+        navigate("/welcome", { replace: true });
+      },
+    });
 
   return (
     <>

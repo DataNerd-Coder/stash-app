@@ -2,7 +2,7 @@
 // It's rebuilt on every chat message, so answers always reflect the latest data.
 // Kept small on purpose: Groq's free tier allows ~8K tokens per minute.
 import { formatNaira } from "../../src/lib/format.js";
-import { getCurrentBusiness, type CurrentBusiness } from "../business.js";
+import type { CurrentBusiness } from "../business.js";
 import { getDashboard } from "../services/dashboard.js";
 import { listProducts, lowStockFrom } from "../services/products.js";
 import { getProfile } from "../services/profile.js";
@@ -27,8 +27,7 @@ function localNow(tz: string) {
 const localDay = (iso: string, tz: string) =>
   new Intl.DateTimeFormat("en-GB", { timeZone: tz, day: "numeric", month: "short" }).format(new Date(iso));
 
-export async function buildBusinessContext(biz?: CurrentBusiness): Promise<string> {
-  const b = biz ?? (await getCurrentBusiness());
+export async function buildBusinessContext(b: CurrentBusiness): Promise<string> {
   const [profile, dashboard, products, reports, debts, invoices, suppliers, expenses] = await Promise.all([
     getProfile(b),
     getDashboard(b),

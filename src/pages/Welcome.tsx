@@ -58,6 +58,10 @@ export default function WelcomePage() {
           <Link to="/signup" className="text-[13px] font-semibold text-muted">
             Skip
           </Link>
+          <span className="mx-2 text-[13px] text-muted-2">·</span>
+          <Link to="/login" className="text-[13px] font-semibold text-primary">
+            Log in
+          </Link>
         </div>
       </div>
 

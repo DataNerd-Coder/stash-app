@@ -7,7 +7,7 @@ import { listProducts, lowStockFrom, publicProduct } from "../server/services/pr
  * GET /api/products?view=low   — "almost out of stock" list
  */
 export const GET = route(async (request) => {
-  const products = await listProducts(await getCurrentBusiness());
+  const products = await listProducts(await getCurrentBusiness(request));
   if (new URL(request.url).searchParams.get("view") === "low") return lowStockFrom(products);
   return products.map(publicProduct);
 });

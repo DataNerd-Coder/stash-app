@@ -220,3 +220,22 @@ export interface ChatRequest {
 export interface ChatResponse {
   reply: string;
 }
+
+// ---- Auth ----
+
+export interface SignupRequest {
+  ownerName: string;
+  businessName: string;
+  phone: string;
+  password: string;
+}
+
+export interface LoginRequest {
+  phone: string;
+  password: string;
+}
+
+export interface Me {
+  name: string;
+  phone: string;
+}

@@ -3,11 +3,14 @@
 //   pnpm db:seed           — only if the database has no business yet
 //   pnpm db:seed --reset   — DELETES ALL business data first, then reseeds
 //
+// Demo login:  phone 0803 123 4567  /  password  stash-demo
+//
 // Sales/purchases are generated for the last 30 days relative to *now*, so the
 // dashboard always has a "today". Re-run with --reset to refresh the demo.
 import { neon } from "@neondatabase/serverless";
 import { count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/neon-http";
+import { hashPassword } from "../server/auth.js";
 import * as schema from "../server/db/schema.js";
 
 const url = process.env.DATABASE_URL;
@@ -17,6 +20,8 @@ if (!url) {
 }
 const db = drizzle(neon(url), { schema });
 const reset = process.argv.includes("--reset");
+const DEMO_PHONE = "08031234567";
+const DEMO_PASSWORD = "stash-demo";
 
 // ---------------------------------------------------------------------------
 // time helpers — Africa/Lagos is UTC+1 all year (no DST)
@@ -76,7 +81,7 @@ async function main() {
     return;
   }
   if (reset) {
-    await db.delete(schema.businesses); // cascades to every business-owned table
+    await db.delete(schema.businesses); // cascades to every business-owned table, users and sessions
     console.log("✓ Cleared existing data");
   }
 
@@ -91,6 +96,13 @@ async function main() {
     })
     .returning();
   const businessId = biz.id;
+
+  await db.insert(schema.users).values({
+    businessId,
+    name: "Michael Chidi",
+    phone: DEMO_PHONE,
+    passwordHash: await hashPassword(DEMO_PASSWORD),
+  });
 
   const productRows = await db
     .insert(schema.products)
@@ -207,6 +219,7 @@ async function main() {
   ]);
 
   console.log(`✓ Seeded "${biz.name}": ${productRows.length} products, ${saleRows.length} sales, ${purchaseRows.length} purchases`);
+  console.log(`  Demo login: phone ${DEMO_PHONE} / password ${DEMO_PASSWORD}`);
 }
 
 await main();
