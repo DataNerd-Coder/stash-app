@@ -1,3 +1,32 @@
+# dependencies
+node_modules
+
+# build output
+dist
+*.tsbuildinfo
+
+# Vercel
+.vercel
+
+# env files
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+
+# OS / editor
 .DS_Store
 Thumbs.db
+
 *.log
+.env
+.env.local
+node_modules
+dist
+=======
+.vscode/*
+!.vscode/extensions.json
+.idea
+

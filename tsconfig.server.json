@@ -1,0 +1,23 @@
+{
+  // Type-checks the backend: Vercel functions (api/), shared server code (server/)
+  // and DB scripts. NodeNext enforces the explicit ".js" import extensions that
+  // Node's ESM loader (and therefore Vercel) requires at runtime.
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.server.tsbuildinfo",
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["api", "server", "scripts", "drizzle.config.ts"],
+  "exclude": ["server/dev"]
+}
